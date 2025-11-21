@@ -1,0 +1,12 @@
+.navbar-custom {
+  background-color: #198754;
+  color: white;
+}
+
+        .navbar-custom{
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+           background: linear-gradient(to bottom right, #fff, #64ffb7);
+           text-align: center;
+        }

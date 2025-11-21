@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StepSense Co.</title>
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+           background: linear-gradient(to bottom right, #fff, #64ffb7);
+           text-align: center;
+        }
+
+        h1 {
+            
+            color: #057f3e;
+            padding: 12px;
+        }
+    
+        .subtitle{
+        text-align: center;
+    margin-top: 10px; 
+    font-size: 16px;  
+    color: #000; 
+    padding-bottom: 7px;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* CARD LEFT, MAP RIGHT */
+        #weatherCard {
+            flex: 1;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+            height: fit-content;
+             display: flex;
+    flex-direction: column;
+    align-items: center; 
+        }
+
+        #map {
+            height: 580px;
+            flex: 2;
+            border-radius: 2%;
+             box-shadow: 0 4px 12px rgba(2, 43, 4, 0.4);
+        }
+
+        .popup-image {
+            max-width: 200px;
+            height: auto;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #057f3e;
+            border: none;
+            color: rgb(255, 255, 255);
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            align-items: center;
+           transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
+            align-self: center;
+        }
+
+        button:hover {
+            background: #057f3e;
+            transform: scale(1.05);
+        }
+        
+
+    </style>
+</head>
+
+<body>
+
+    <h1>StepSense Co.</h1>
+    <p class="subtitle">Check the weather… and decide if it’s an adventure day!<p>
+
+    <div class="container">
+
+
+        
+
+        <!-- CARD FIRST (LEFT SIDE) -->
+        <div id="weatherCard">
+          
+           
+            <button onclick="getWeather()">Get Weather</button>
+            <div id="weatherResult"></div>
+        </div>
+
+        <!-- MAP SECOND (RIGHT SIDE) -->
+        <div id="map"></div>
+
+    </div>
+
+    <script>
+
+        // ---------------------- MAP SECTION ---------------------->
+
+        let map;
+        let cityMarker = null;
+
+        function initMap(mapDataUrl) {
+            map = L.map('map').setView([12.489382905214779, 123.06204968450204], 5);
+
+
+           const satellite = L.tileLayer(
+    'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    { attribution: 'Tiles (c) Esri - Source: Esri, Maxar, Earthstar Geographics, GIS User Community' }
+);
+
+
+            satellite.addTo(map);
+            const markerGroups = {};
+
+            fetch(mapDataUrl)
+                .then(response => response.json())
+                .then(data => {
+                    data.forEach(pin => {
+                        const type = pin.locationType || "Other";
+
+                        if (!markerGroups[type]) {
+                            markerGroups[type] = L.layerGroup();
+                        }
+
+                        const marker = L.marker([pin.lat, pin.lng]).addTo(map);
+                        const img = `<img src="${pin.img}" class="popup-image">`;
+
+                        marker.bindPopup(`${img}<br><b>${pin.title}</b><br>${pin.description}<br>${pin.locationType}`);
+
+                        markerGroups[type].addLayer(marker);
+                    });
+
+                    Object.values(markerGroups).forEach(group => group.addTo(map));
+
+                    L.control.layers(
+                        {
+                            "OpenStreetMap": openStreetMap,
+                            "Satellite": satellite
+                        },
+                        markerGroups,
+                        { collapsed: false }
+                    ).addTo(map);
+                })
+                .catch(err => console.error("Error loading JSON", err));
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            initMap("campus-map.json");
+        });
+
+
+        //---------------------- WEATHER SECTION ---------------------->
+
+        const apiKey = "71f1476d46775282b461831e0cef5202";
+        const geocodeUrl = "https://api.openweathermap.org/geo/1.0/direct";
+
+        async function getWeather() {
+            const city = prompt("Enter the city you're at: ");
+            if (!city) return alert("No city entered.");
+
+            const weatherUrl =
+                `https://api.openweathermap.org/data/2.5/weather?q=${city}&appid=${apiKey}&units=metric`;
+
+            try {
+                const response = await fetch(weatherUrl);
+                if (!response.ok) throw new Error("City not found.");
+                const data = await response.json();
+
+
+
+
+                document.getElementById("weatherResult").innerHTML = `
+            <h2>${data.name}, ${data.sys.country}</h2>
+            <p><b>Temperature:</b> ${data.main.temp}°C</p>
+            <p><b>Weather:</b> ${data.weather[0].description}</p>
+            <p><b>Humidity:</b> ${data.main.humidity}%</p>
+            <p><b>Wind:</b> ${data.wind.speed} m/s</p>
+
+            <hr>
+
+          
+         
+        `;
+
+                const geoResponse = await fetch(`${geocodeUrl}?q=${city}&limit=1&appid=${apiKey}`);
+                const geoData = await geoResponse.json();
+                if (geoData.length === 0) return alert("Location not found.");
+
+                const lat = geoData[0].lat;
+                const lon = geoData[0].lon;
+
+                if (cityMarker) map.removeLayer(cityMarker);
+
+                cityMarker = L.marker([lat, lon]).addTo(map)
+                    .bindPopup(`<b>${city}</b><br>You are here!`)
+                    .openPopup();
+
+                map.setView([lat, lon], 20);
+
+            } catch (error) {
+                alert("Error: " + error.message);
+            }
+        }
+       
+
+
+    </script>
+
+</body>
+
+</html>
